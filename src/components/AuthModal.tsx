@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, User as UserIcon } from 'lucide-react';
+import { X, Mail, Lock, User as UserIcon, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface AuthModalProps {
@@ -11,6 +11,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -34,6 +36,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         setError(result.error || 'Failed to login');
       }
     } else {
+      if (password !== confirmPassword) {
+        setError('Passwords do not match');
+        setIsLoading(false);
+        return;
+      }
       const result = await signupWithEmail(email, password, name);
       if (result.success) {
         setMessage(result.message || 'Signup successful!');
@@ -91,9 +98,42 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-brand-primary outline-none" placeholder="••••••••" minLength={6} />
+              <input 
+                type={showPassword ? "text" : "password"} 
+                required 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-brand-primary outline-none" 
+                placeholder="••••••••" 
+                minLength={6} 
+              />
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
+
+          {!isLogin && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  required 
+                  value={confirmPassword} 
+                  onChange={e => setConfirmPassword(e.target.value)} 
+                  className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-brand-primary outline-none" 
+                  placeholder="••••••••" 
+                  minLength={6} 
+                />
+              </div>
+            </div>
+          )}
 
           <button type="submit" disabled={isLoading} className="w-full btn-primary py-3 flex justify-center items-center">
             {isLoading ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : (isLogin ? 'Sign In' : 'Sign Up')}
