@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #F97316;
+  --color-brand-primary-hover: #EA580C;
+  --color-brand-dark: #2E2E2E;
+  --color-brand-medium: #6B7280;
+  --color-brand-light: #E5E7EB;
+  --color-brand-bg: #F9FAFB;
+}
+
+@layer base {
+  :root {
+    --primary: #F97316;
+    --primary-hover: #EA580C;
+    --grey-dark: #2E2E2E;
+    --grey-medium: #6B7280;
+    --grey-light: #E5E7EB;
+    --bg-base: #F9FAFB;
+  }
+
+  body {
+    background-color: var(--bg-base);
+    color: var(--grey-medium);
+    @apply transition-colors duration-200;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--grey-dark);
+  }
+}
+
+/* Custom utility classes for the theme */
+@layer components {
+  .btn-primary {
+    @apply bg-brand-primary hover:bg-brand-primary-hover text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 shadow-sm;
+  }
+  
+  .btn-secondary {
+    @apply bg-brand-light hover:bg-gray-300 text-brand-dark font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+
+  .card {
+    @apply bg-white border border-brand-light rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+
+  .text-highlight {
+    @apply text-brand-primary;
+  }
+
+  .link-hover {
+    @apply hover:text-brand-primary transition-colors duration-200;
+  }
+}
