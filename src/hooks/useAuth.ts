@@ -90,6 +90,7 @@ export function useAuth() {
         await signOut(auth);
         return { 
           success: false, 
+          needsVerification: true,
           error: 'Please verify your email before signing in. Check your spam folder if you cannot find the verification email in your inbox.' 
         };
       }
@@ -101,5 +102,17 @@ export function useAuth() {
     }
   };
 
-  return { user, isAdmin, loading, login, logout, signupWithEmail, loginWithEmail };
+  const resendVerificationEmail = async (email: string, password: string) => {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      await sendEmailVerification(userCredential.user);
+      await signOut(auth);
+      return { success: true, message: 'Verification email resent successfully! Please check your inbox and spam folder.' };
+    } catch (error: any) {
+      console.error("Error resending verification:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  return { user, isAdmin, loading, login, logout, signupWithEmail, loginWithEmail, resendVerificationEmail };
 }

@@ -17,8 +17,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
   
-  const { loginWithEmail, signupWithEmail, login: googleLogin } = useAuth();
+  const { loginWithEmail, signupWithEmail, login: googleLogin, resendVerificationEmail } = useAuth();
 
   if (!isOpen) return null;
 
@@ -26,6 +27,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     e.preventDefault();
     setError('');
     setMessage('');
+    setNeedsVerification(false);
     setIsLoading(true);
 
     if (isLogin) {
@@ -34,6 +36,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         onClose();
       } else {
         setError(result.error || 'Failed to login');
+        if (result.needsVerification) {
+          setNeedsVerification(true);
+        }
       }
     } else {
       if (password !== confirmPassword) {
@@ -52,6 +57,20 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       } else {
         setError(result.error || 'Failed to sign up');
       }
+    }
+    setIsLoading(false);
+  };
+
+  const handleResendVerification = async () => {
+    setIsLoading(true);
+    setError('');
+    setMessage('');
+    const result = await resendVerificationEmail(email, password);
+    if (result.success) {
+      setMessage(result.message || 'Verification email sent!');
+      setNeedsVerification(false);
+    } else {
+      setError(result.error || 'Failed to resend email.');
     }
     setIsLoading(false);
   };
@@ -138,6 +157,17 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <button type="submit" disabled={isLoading} className="w-full btn-primary py-3 flex justify-center items-center">
             {isLoading ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : (isLogin ? 'Sign In' : 'Sign Up')}
           </button>
+
+          {needsVerification && (
+            <button 
+              type="button" 
+              onClick={handleResendVerification}
+              disabled={isLoading} 
+              className="w-full py-3 mt-2 flex justify-center items-center border border-brand-primary text-brand-primary rounded-xl font-bold hover:bg-brand-light transition-colors"
+            >
+              {isLoading ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-brand-primary"></div> : 'Resend Verification Email'}
+            </button>
+          )}
         </form>
 
         <div className="mt-6">
