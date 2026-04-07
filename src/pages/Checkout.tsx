@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, addDoc, doc, updateDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, increment, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useCartStore } from '../store/useCartStore';
 import { useAuth } from '../hooks/useAuth';
@@ -21,6 +21,13 @@ export default function Checkout() {
     city: '',
     zip: '',
   });
+  
+  const [cardData, setCardData] = useState({
+    cardNumber: '',
+    expiry: '',
+    cvc: ''
+  });
+
   const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'card'>('mpesa');
   const [isProcessing, setIsProcessing] = useState(false);
   const [stkPushSent, setStkPushSent] = useState(false);
@@ -29,9 +36,38 @@ export default function Checkout() {
 
   const total = getCartTotal();
 
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setFormData(prev => ({
+              ...prev,
+              name: data.name || prev.name,
+              phone: data.phone || prev.phone,
+              address: data.address || prev.address,
+              city: data.city || prev.city,
+              zip: data.zip || prev.zip,
+            }));
+          }
+        } catch (error) {
+          console.error("Error fetching user details:", error);
+        }
+      }
+    };
+    fetchUserDetails();
+  }, [user]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCardInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setCardData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,18 +79,29 @@ export default function Checkout() {
       if (paymentMethod === 'mpesa') {
         // Simulate M-Pesa STK Push
         setStkPushSent(true);
-        // Wait for 5 seconds to simulate user entering PIN
         await new Promise(resolve => setTimeout(resolve, 5000));
-        
-        // Randomly succeed or fail for simulation purposes (80% success rate)
         const isSuccess = Math.random() > 0.2;
-        
         if (!isSuccess) {
           throw new Error('M-Pesa transaction failed or was cancelled by user.');
         }
       } else {
         // Simulate Card processing
+        if (!cardData.cardNumber || !cardData.expiry || !cardData.cvc) {
+          throw new Error('Please fill in all card details.');
+        }
         await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+
+      // Save user details for future checkouts
+      if (user) {
+        const userRef = doc(db, 'users', user.uid);
+        await setDoc(userRef, {
+          name: formData.name,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          zip: formData.zip
+        }, { merge: true });
       }
 
       const orderData = {
@@ -70,14 +117,26 @@ export default function Checkout() {
           quantity: item.quantity
         })),
         totalAmount: total,
-        status: 'pending', // Set to pending initially, would be updated by a real webhook
+        status: 'pending',
         paymentMethod: paymentMethod,
         createdAt: new Date()
       };
 
-      await addDoc(collection(db, 'orders'), orderData);
+      const orderRef = await addDoc(collection(db, 'orders'), orderData);
       
-      // Decrement stock for each item in the order
+      // Create a notification for the user
+      if (user) {
+        await addDoc(collection(db, 'notifications'), {
+          userId: user.uid,
+          title: 'Order Confirmed',
+          message: `Your order #${orderRef.id.slice(-6).toUpperCase()} has been received and is pending processing.`,
+          type: 'order_confirmation',
+          read: false,
+          createdAt: new Date()
+        });
+      }
+      
+      // Decrement stock
       for (const item of items) {
         const productRef = doc(db, 'products', item.productId);
         try {
@@ -88,12 +147,6 @@ export default function Checkout() {
           console.error(`Failed to decrement stock for product ${item.productId}`, err);
         }
       }
-      
-      // Simulate sending confirmation email
-      console.log(`Sending order confirmation email to ${formData.email}...`);
-      console.log(`Email Content: Order #${Date.now()} confirmed. Total: KES ${total}. Items: ${items.map(i => i.name).join(', ')}`);
-      // In a real production app, you would trigger a Firebase Cloud Function here,
-      // or use a service like EmailJS to send the actual email.
       
       setOrderComplete(true);
       clearCart();
@@ -211,6 +264,26 @@ export default function Checkout() {
                   <span className="font-medium text-brand-dark">Credit Card</span>
                 </div>
               </div>
+
+              {paymentMethod === 'card' && (
+                <div className="mb-8 p-6 border border-brand-light rounded-xl bg-gray-50">
+                  <h3 className="text-sm font-bold text-brand-dark mb-4">Card Details</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <label htmlFor="cardNumber" className="block text-xs font-medium text-brand-dark mb-1">Card Number</label>
+                      <input type="text" id="cardNumber" name="cardNumber" required value={cardData.cardNumber} onChange={handleCardInputChange} placeholder="0000 0000 0000 0000" className="block w-full px-3 py-2 border border-brand-light rounded-lg bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-primary" />
+                    </div>
+                    <div>
+                      <label htmlFor="expiry" className="block text-xs font-medium text-brand-dark mb-1">Expiry Date</label>
+                      <input type="text" id="expiry" name="expiry" required value={cardData.expiry} onChange={handleCardInputChange} placeholder="MM/YY" className="block w-full px-3 py-2 border border-brand-light rounded-lg bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-primary" />
+                    </div>
+                    <div>
+                      <label htmlFor="cvc" className="block text-xs font-medium text-brand-dark mb-1">CVC</label>
+                      <input type="text" id="cvc" name="cvc" required value={cardData.cvc} onChange={handleCardInputChange} placeholder="123" className="block w-full px-3 py-2 border border-brand-light rounded-lg bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-primary" />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {paymentError && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">

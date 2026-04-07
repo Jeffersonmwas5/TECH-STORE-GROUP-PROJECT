@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, updateDoc, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
 import { Package, Clock, CheckCircle, Truck, XCircle, MapPin } from 'lucide-react';
@@ -48,6 +48,18 @@ export default function OrderHistory() {
       try {
         const orderRef = doc(db, 'orders', orderId);
         await updateDoc(orderRef, { status: 'cancelled' });
+        
+        if (user) {
+          await addDoc(collection(db, 'notifications'), {
+            userId: user.uid,
+            title: 'Order Cancelled',
+            message: `Your order #${orderId.slice(-6).toUpperCase()} has been cancelled. Please wait up to 24 hours to process the refund if you had already paid.`,
+            type: 'order_cancellation',
+            read: false,
+            createdAt: new Date()
+          });
+        }
+        
         fetchOrders();
       } catch (error) {
         console.error("Error cancelling order:", error);

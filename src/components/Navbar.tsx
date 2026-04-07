@@ -5,6 +5,7 @@ import { useThemeStore } from '../store/useThemeStore';
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import AuthModal from './AuthModal';
+import NotificationCenter from './NotificationCenter';
 
 export default function Navbar() {
   const { items } = useCartStore();
@@ -37,9 +38,12 @@ export default function Navbar() {
               
               <div className="flex items-center space-x-4 border-l border-gray-600 pl-4">
                 {user && (
-                  <Link to="/orders" className="p-2 rounded-full hover:bg-gray-700 transition-colors text-brand-light hover:text-brand-primary">
-                    <Package size={20} />
-                  </Link>
+                  <>
+                    <NotificationCenter />
+                    <Link to="/orders" className="p-2 rounded-full hover:bg-gray-700 transition-colors text-brand-light hover:text-brand-primary">
+                      <Package size={20} />
+                    </Link>
+                  </>
                 )}
 
                 {isAdmin && (

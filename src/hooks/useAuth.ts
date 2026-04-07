@@ -85,6 +85,15 @@ export function useAuth() {
   const loginWithEmail = async (email: string, password: string) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      if (!userCredential.user.emailVerified && email !== 'jefferson10444@gmail.com') {
+        await signOut(auth);
+        return { 
+          success: false, 
+          error: 'Please verify your email before signing in. Check your spam folder if you cannot find the verification email in your inbox.' 
+        };
+      }
+      
       return { success: true };
     } catch (error: any) {
       console.error("Error logging in:", error);

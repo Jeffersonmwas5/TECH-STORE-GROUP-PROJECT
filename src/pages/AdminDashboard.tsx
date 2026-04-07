@@ -192,6 +192,25 @@ export default function AdminDashboard() {
     try {
       const orderRef = doc(db, 'orders', orderId);
       await updateDoc(orderRef, { status: newStatus });
+      
+      // Find the order to get the userId
+      const order = orders.find(o => o.id === orderId);
+      if (order && order.userId) {
+        let message = `Your order #${orderId.slice(-6).toUpperCase()} status has been updated to ${newStatus}.`;
+        if (newStatus === 'cancelled') {
+          message = `Your order #${orderId.slice(-6).toUpperCase()} has been cancelled. Please wait up to 24 hours to process the refund if you had already paid.`;
+        }
+        
+        await addDoc(collection(db, 'notifications'), {
+          userId: order.userId,
+          title: `Order ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
+          message: message,
+          type: 'order_update',
+          read: false,
+          createdAt: new Date()
+        });
+      }
+      
       fetchOrders();
     } catch (error) {
       console.error("Error updating order status:", error);
